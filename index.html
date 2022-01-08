@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quiz App</title>
+    <link rel="stylesheet" href="style.css" />
+    <script defer src="script.js"></script>
+  </head>
+  <body>
+    <div class="alert-box"></div>
+
+    <div class="container heading-div">
+      <h1 class="heading">Quiz App</h1>
+    </div>
+
+    <div class="container form-container">
+      <button class="btn btn-o-secondary add-question show">
+        Add question
+      </button>
+      <div class="container form-wrapper">
+        <button class="btn btn-primary close-form-btn">&times;</button>
+        <form id="question-form">
+          <div class="form-group">
+            <label for="input-question">Question</label>
+            <textarea
+              class="user-input"
+              id="input-question"
+              name="inputQuestion"
+              rows="4"
+              spellcheck="false"
+            ></textarea>
+          </div>
+          <div class="form-group">
+            <label for="input-answer">answer</label>
+            <textarea
+              class="user-input"
+              id="input-answer"
+              name="inputAnswer"
+              rows="4"
+              spellcheck="false"
+            ></textarea>
+          </div>
+          <div class="form-group">
+            <button type="submit" class="btn btn-secondary save-btn">
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="container qna-container">
+      <!-- <div class="container quiz-card">
+        <div class="quiz-card-head">
+          <h3 class="question-text">
+            This is a very good question on javascript?
+          </h3>
+        </div>
+        <div class="quiz-card-body">
+          <button type="submit" class="btn-text btn-text-primary show-hide-btn">
+            Show / Hide the answer
+          </button>
+          <p class="answer-text show">
+            In publishing and graphic design, Lorem ipsum is a placeholder text
+            commonly used to demonstrate the visual form of a document or a
+            typeface without relying on meaningful content. Lorem ipsum may be
+            used as a placeholder before the final copy is available.
+          </p>
+        </div>
+        <div class="quiz-card-footer">
+          <button type="button" class="btn btn-o-secondary edit-btn">
+            Edit
+          </button>
+          <button type="button" class="btn btn-primary delete-btn">
+            Delete
+          </button>
+        </div>
+      </div> -->
+    </div>
+  </body>
+</html>
