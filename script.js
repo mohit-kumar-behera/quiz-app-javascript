@@ -6,9 +6,15 @@ const ALERT = {
   WARN: 'alert-warn',
   SUCCESS: 'alert-success',
 };
+
+const OPERATION_TYPE = {
+  CREATE: 'added',
+  UPDATE: 'edited',
+};
+
 const ALERTBOX_TIMEOUT_SEC = 3;
 const HIDE_FORM_TIMEOUT_SEC = 1.5;
-const MIN_INPUT_LENGTH = 1; // MUST BE 5
+const MIN_INPUT_LENGTH = 5;
 
 const addQuestionBtn = document.querySelector('.add-question');
 const formWrapper = document.querySelector('.form-wrapper');
@@ -56,9 +62,22 @@ class UI {
   hideForm() {
     formWrapper.classList.remove('show');
     addQuestionBtn.classList.add('show');
+
+    if (this.buffer?.isQuestionInBuffer) {
+      const qInBuffer = this.buffer.questionInBuffer;
+
+      // Add the buffered question back
+      this._onSuccessfullQuestionFn(qInBuffer, OPERATION_TYPE.UPDATE);
+
+      // Remove question from buffer
+      this.buffer.removeQuestionFromBuffer();
+    }
   }
 
   showForm() {
+    // Clear Input Fields
+    this.clearFields && this.clearFields(questionInput, answerInput);
+
     formWrapper.classList.add('show');
     addQuestionBtn.classList.remove('show');
   }
@@ -103,10 +122,33 @@ class UI {
   }
 }
 
+class Buffer {
+  _questionInBuffer = null;
+
+  get isQuestionInBuffer() {
+    return this._questionInBuffer ? true : false;
+  }
+
+  get questionInBuffer() {
+    return this._questionInBuffer;
+  }
+
+  addQuestionToBuffer(question) {
+    this._questionInBuffer = question;
+    qnaContainer.classList.add('freeze');
+  }
+
+  removeQuestionFromBuffer() {
+    this._questionInBuffer = null;
+    qnaContainer.classList.remove('freeze');
+  }
+}
+
 class QuizApp {
   questions = [];
   ls = new LocalStorage();
   ui = new UI();
+  buffer = new Buffer();
 
   constructor() {
     // Fetch previously stored quiz data
@@ -119,14 +161,30 @@ class QuizApp {
     });
 
     // Event Listener
-    addQuestionBtn.addEventListener('click', this.ui.showForm);
-    closeFormBtn.addEventListener('click', this.ui.hideForm);
+    addQuestionBtn.addEventListener('click', this.ui.showForm.bind(this));
+    closeFormBtn.addEventListener('click', this.ui.hideForm.bind(this));
     form.addEventListener('submit', this._addNewQuestion.bind(this));
     qnaContainer.addEventListener('click', this._handleQuizCard.bind(this));
   }
 
-  _clearFields(...fields) {
+  clearFields(...fields) {
     fields.forEach(field => (field.value = ''));
+  }
+
+  _onSuccessfullQuestionFn(question, type = OPERATION_TYPE.CREATE) {
+    // Add Question
+    this.questions.push(question);
+
+    // Add to local storage
+    this.ls.addToLocalStorage(this.questions);
+
+    // Update UI
+    this.ui.addQuestion(qnaContainer, question);
+
+    if (type === OPERATION_TYPE.UPDATE) return;
+
+    // Show success message
+    this.ui.showAlertWindow('Question was saved successfully.', ALERT.SUCCESS);
   }
 
   _validateInput(questionVal, answerVal) {
@@ -163,21 +221,14 @@ class QuizApp {
     const isValidate = this._validateInput(questionVal, answerVal);
     if (!isValidate) return;
 
-    // Add Question
+    // Create Question Obj
     const question = new Question(questionVal, answerVal);
-    this.questions.push(question);
+
+    // On Successfully adding a question
+    this._onSuccessfullQuestionFn(question);
 
     // Clear Input Fields
-    this._clearFields(questionInput, answerInput);
-
-    // Add to local storage
-    this.ls.addToLocalStorage(this.questions);
-
-    // Update UI
-    this.ui.addQuestion(qnaContainer, question);
-
-    // Show success message
-    this.ui.showAlertWindow('Question was added successfully.', ALERT.SUCCESS);
+    this.clearFields(questionInput, answerInput);
 
     // Hide Form
     setTimeout(
@@ -186,48 +237,77 @@ class QuizApp {
       }.bind(this),
       HIDE_FORM_TIMEOUT_SEC * 1000
     );
+
+    // Remove question from buffer
+    if (this.buffer?.isQuestionInBuffer) this.buffer.removeQuestionFromBuffer();
   }
 
   _removeQuestion(qid, elem) {
+    // Remove question from UI
     this.ui.removeQuestion(qnaContainer, elem);
 
     // Update questions array
-    this.questions = this.questions.filter(item => item.id !== parseInt(qid));
+    this.questions = this.questions.filter(
+      question => question.id !== parseInt(qid)
+    );
 
+    // Update Local Storage
     this.ls.addToLocalStorage(this.questions);
   }
 
   _handleQuizCard(e) {
     e.preventDefault();
+
+    // Disable it if there is a question in buffer
+    if (this.buffer.isQuestionInBuffer) {
+      this.ui.showAlertWindow(
+        'First save your changes in currently ongoing edit process or cancel it',
+        ALERT.WARN
+      );
+      return;
+    }
+
     const cardElTarget = e.target;
 
+    /* SHOW-HIDE CARD */
     if (cardElTarget.classList.contains('show-hide-btn')) {
       cardElTarget.nextElementSibling.classList.toggle('show');
-    } else if (cardElTarget.classList.contains('edit-btn')) {
+      return;
+    }
+
+    /* EDIT CARD */
+    if (cardElTarget.classList.contains('edit-btn')) {
       // ID of current clicked quiz card
       const id = cardElTarget.dataset.id;
-    } else if (cardElTarget.classList.contains('delete-btn')) {
+      const [editQuestion] = this.questions.filter(
+        question => question.id === parseInt(id)
+      );
+
+      // Add question to Buffer Storage
+      this.buffer.addQuestionToBuffer(editQuestion);
+
+      // Remove Question
+      const rootEl = cardElTarget.parentElement.parentElement;
+      this._removeQuestion(id, rootEl);
+
+      // Show Form to Edit
+      this.ui.showForm();
+      questionInput.value = editQuestion.question;
+      answerInput.value = editQuestion.answer;
+      return;
+    }
+
+    /* DELETE CARD */
+    if (cardElTarget.classList.contains('delete-btn')) {
       // ID of current clicked quiz card
       const id = cardElTarget.dataset.id;
 
-      // Remove Question from UI
+      // Remove Question
       const rootEl = cardElTarget.parentElement.parentElement;
       this._removeQuestion(id, rootEl);
-    } else {
       return;
     }
   }
 }
 
 const app = new QuizApp();
-
-/* TODO: 
-## EDIT ##
-1) Add question to buffer
-2) Remove question from UI
-CASE 1: EDIT DONE
-  add the question as if it is created and clear the buffer
-CASE 2: EDIT CANCELLED
-  Before hiding the form check if there is some question in buffer and if it is there then add that question to ui
-
-*/
